@@ -2,6 +2,7 @@
 # Copyright(c) 2017-2019 Intel Corporation
 
 apps = [
+        'dpdk',
         'dumpcap',
         'pdump',
         'proc-info',
@@ -52,7 +53,8 @@ foreach app:apps
                 message('Missing dependency "@0@" for app "@1@"'.format(d, name))
                 break
             endif
-            dep_objs += [get_variable(var_name)]
+            # to only use headers with convenience libraries to avoid linking to the same library multiple times.
+            dep_objs += [get_variable(var_name).partial_dependency(includes : true)]
         endforeach
     endif
 
@@ -65,15 +67,26 @@ foreach app:apps
         link_libs = dpdk_static_libraries + dpdk_drivers
     endif
 
-    executable('dpdk-' + name,
-            sources,
-            c_args: cflags,
-            link_args: ldflags,
-            link_whole: link_libs,
-            dependencies: ext_deps + dep_objs,
-            include_directories: includes,
-            install_rpath: join_paths(get_option('prefix'), driver_install_path),
-            install: true)
+    if name == 'dpdk'
+        c_args += '-Wl,--whole-archive link_libs'
+        shared_lib = shared_library(name,
+                c_args: cflags,
+                link_args: ldflags,
+                link_whole: link_libs,
+                install_rpath: join_paths(get_option('prefix'), driver_install_path),
+                install: true)
+    else
+        executable('dpdk-' + name,
+                sources,
+                c_args: cflags,
+                link_args: ldflags,
+                # link_whole: link_libs,
+                dependencies: ext_deps + dep_objs,
+                link_with: shared_lib,
+                # include_directories: includes,
+                install_rpath: join_paths(get_option('prefix'), driver_install_path),
+                install: true)
+    endif
 endforeach
 
 # special case the autotests

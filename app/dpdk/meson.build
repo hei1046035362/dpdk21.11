@@ -1,0 +1,16 @@
+# SPDX-License-Identifier: BSD-3-Clause
+# Copyright(c) 2019 Microsoft Corporation
+
+if not dpdk_conf.has('RTE_HAS_LIBPCAP')
+    build = false
+    reason = 'missing dependency, "libpcap"'
+endif
+
+if is_windows
+    build = false
+    reason = 'not supported on Windows'
+    subdir_done()
+endif
+
+build = true
+cflags = ['-fPIC -shared -o libdkpk.so -Wl,--no-whole-archive']
